@@ -3286,5 +3286,11 @@
     "platforms": ["darwin", "linux", "win32"],
     "parameters": ["webDriverBiDi"],
     "expectations": ["SKIP"]
+  },
+  {
+    "testIdPattern": "[jshandle.spec] JSHandle Page.evaluateHandle should work",
+    "platforms": ["darwin", "linux", "win32"],
+    "parameters": ["webDriverBiDi"],
+    "expectations": ["PASS"]
   }
 ]

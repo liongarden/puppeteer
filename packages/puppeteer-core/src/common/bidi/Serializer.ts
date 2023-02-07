@@ -202,7 +202,7 @@ export class BidiSerializer {
     return {key, value};
   }
 
-  static deserialize(result: Bidi.CommonDataTypes.RemoteValue): unknown {
+  static deserialize(result: Bidi.CommonDataTypes.RemoteValue): any {
     if (!result) {
       debugError('Service did not produce a result.');
       return undefined;

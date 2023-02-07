@@ -16,7 +16,7 @@
 
 import {Page as PageBase} from '../../api/Page.js';
 import {Connection} from './Connection.js';
-import type {EvaluateFunc} from '../types.js';
+import type {EvaluateFunc, HandleFor} from '../types.js';
 import {isString, stringifyFunction} from '../util.js';
 import {BidiSerializer} from './Serializer.js';
 /**
@@ -38,6 +38,21 @@ export class Page extends PageBase {
     });
   }
 
+  // TODO: Extract to ExecutionContext
+  get connection(): Connection {
+    return this.#connection;
+  }
+
+  override async evaluateHandle<
+    Params extends unknown[],
+    Func extends EvaluateFunc<Params> = EvaluateFunc<Params>
+  >(
+    pageFunction: Func | string,
+    ...args: Params
+  ): Promise<HandleFor<Awaited<ReturnType<Func>>>> {
+    return this.#evaluate(false, pageFunction, ...args);
+  }
+
   override async evaluate<
     Params extends unknown[],
     Func extends EvaluateFunc<Params> = EvaluateFunc<Params>
@@ -45,11 +60,40 @@ export class Page extends PageBase {
     pageFunction: Func | string,
     ...args: Params
   ): Promise<Awaited<ReturnType<Func>>> {
+    return this.#evaluate(true, pageFunction, ...args);
+  }
+
+  async #evaluate<
+    Params extends unknown[],
+    Func extends EvaluateFunc<Params> = EvaluateFunc<Params>
+  >(
+    returnByValue: true,
+    pageFunction: Func | string,
+    ...args: Params
+  ): Promise<Awaited<ReturnType<Func>>>;
+  async #evaluate<
+    Params extends unknown[],
+    Func extends EvaluateFunc<Params> = EvaluateFunc<Params>
+  >(
+    returnByValue: false,
+    pageFunction: Func | string,
+    ...args: Params
+  ): Promise<HandleFor<Awaited<ReturnType<Func>>>>;
+  async #evaluate<
+    Params extends unknown[],
+    Func extends EvaluateFunc<Params> = EvaluateFunc<Params>
+  >(
+    returnByValue: boolean,
+    pageFunction: Func | string,
+    ...args: Params
+  ): Promise<HandleFor<Awaited<ReturnType<Func>>> | Awaited<ReturnType<Func>>> {
     let responsePromise;
+    const resultOwnership = returnByValue ? 'none' : 'root';
     if (isString(pageFunction)) {
       responsePromise = this.#connection.send('script.evaluate', {
         expression: pageFunction,
         target: {context: this.#contextId},
+        resultOwnership,
         awaitPromise: true,
       });
     } else {
@@ -57,6 +101,7 @@ export class Page extends PageBase {
         functionDeclaration: stringifyFunction(pageFunction),
         arguments: await Promise.all(args.map(BidiSerializer.serialize)),
         target: {context: this.#contextId},
+        resultOwnership,
         awaitPromise: true,
       });
     }
@@ -67,8 +112,12 @@ export class Page extends PageBase {
       throw new Error(result.exceptionDetails.text);
     }
 
-    return BidiSerializer.deserialize(result.result) as Awaited<
-      ReturnType<Func>
-    >;
+    return returnByValue
+      ? BidiSerializer.deserialize(result.result)
+      : getBidiHandler();
   }
+}
+
+function getBidiHandler(): any {
+  return;
 }
