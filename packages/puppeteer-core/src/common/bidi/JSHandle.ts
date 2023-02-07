@@ -16,17 +16,12 @@
 
 import {ElementHandle} from '../../common/ElementHandle.js';
 import {EvaluateFunc, HandleFor, HandleOr} from '../../common/types.js';
-import * as Bidi from 'chromium-bidi/lib/cjs/protocol/protocol.js';
 import {releaseReference} from './utils.js';
 import {Page} from './Page.js';
 import {JSHandle as BaseJSHandle} from '../../api/JSHandle.js';
 import {BidiSerializer} from './Serializer.js';
 import {Connection} from './Connection.js';
-
-type Reference = Extract<
-  Bidi.CommonDataTypes.RemoteValue,
-  Bidi.CommonDataTypes.RemoteReference
->;
+import {Reference} from './types.js';
 
 export class JSHandle<T = unknown> extends BaseJSHandle {
   #disposed = false;
@@ -103,7 +98,15 @@ export class JSHandle<T = unknown> extends BaseJSHandle {
   }
 
   override async getProperties(): Promise<Map<string, JSHandle>> {
-    throw new Error('Not implemented');
+    const result = new Map<string, JSHandle>();
+    const response = await this.evaluateHandle(object => {
+      // TODO:
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
+      return object[propertyName as K];
+    });
+
+    return result;
   }
 
   override async jsonValue(): Promise<T> {

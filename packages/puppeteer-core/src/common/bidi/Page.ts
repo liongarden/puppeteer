@@ -19,22 +19,25 @@ import {Connection} from './Connection.js';
 import type {EvaluateFunc, HandleFor} from '../types.js';
 import {isString, stringifyFunction} from '../util.js';
 import {BidiSerializer} from './Serializer.js';
+import {JSHandle} from './JSHandle.js';
+import {Reference} from './types.js';
+
 /**
  * @internal
  */
 export class Page extends PageBase {
   #connection: Connection;
-  #contextId: string;
+  _contextId: string;
 
   constructor(connection: Connection, contextId: string) {
     super();
     this.#connection = connection;
-    this.#contextId = contextId;
+    this._contextId = contextId;
   }
 
   override async close(): Promise<void> {
     await this.#connection.send('browsingContext.close', {
-      context: this.#contextId,
+      context: this._contextId,
     });
   }
 
@@ -92,7 +95,7 @@ export class Page extends PageBase {
     if (isString(pageFunction)) {
       responsePromise = this.#connection.send('script.evaluate', {
         expression: pageFunction,
-        target: {context: this.#contextId},
+        target: {context: this._contextId},
         resultOwnership,
         awaitPromise: true,
       });
@@ -100,7 +103,7 @@ export class Page extends PageBase {
       responsePromise = this.#connection.send('script.callFunction', {
         functionDeclaration: stringifyFunction(pageFunction),
         arguments: await Promise.all(args.map(BidiSerializer.serialize)),
-        target: {context: this.#contextId},
+        target: {context: this._contextId},
         resultOwnership,
         awaitPromise: true,
       });
@@ -114,10 +117,20 @@ export class Page extends PageBase {
 
     return returnByValue
       ? BidiSerializer.deserialize(result.result)
-      : getBidiHandler();
+      : getBidiHandler(this, result.result as Reference);
   }
 }
 
-function getBidiHandler(): any {
-  return;
+/**
+ * @internal
+ */
+export function getBidiHandler(context: Page, result: Reference): JSHandle {
+  // TODO: | ElementHandle<Node>
+  if (
+    (result.type === 'node' || result.type === 'window') &&
+    context._contextId
+  ) {
+    throw new Error('ElementHandle not implemented');
+  }
+  return new JSHandle(context, result);
 }
