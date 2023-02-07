@@ -98,15 +98,7 @@ export class JSHandle<T = unknown> extends BaseJSHandle {
   }
 
   override async getProperties(): Promise<Map<string, JSHandle>> {
-    const result = new Map<string, JSHandle>();
-    const response = await this.evaluateHandle(object => {
-      // TODO:
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
-      return object[propertyName as K];
-    });
-
-    return result;
+    throw new Error('Not Implemented');
   }
 
   override async jsonValue(): Promise<T> {
